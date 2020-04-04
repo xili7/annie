@@ -2,6 +2,7 @@ package bilibili
 
 import (
 	"encoding/json"
+	"encoding/xml"
 	"errors"
 	"fmt"
 	"strconv"
@@ -148,7 +149,11 @@ func extractBangumi(url, html string) ([]downloader.Data, error) {
 		}
 		go func(index int, options bilibiliOptions, extractedData []downloader.Data) {
 			defer wgp.Done()
-			extractedData[index] = bilibiliDownload(options)
+			if config.BilibiliAccessKey != "" {
+				extractedData[index] = biliplusDownload(options)
+			} else {
+				extractedData[index] = bilibiliDownload(options)
+			}
 		}(dataIndex, options, extractedData)
 		dataIndex++
 	}
@@ -341,6 +346,71 @@ func bilibiliDownload(options bilibiliOptions) downloader.Data {
 	)
 	if err != nil {
 		return downloader.EmptyData(options.url, err)
+	}
+
+	return downloader.Data{
+		Site:    "哔哩哔哩 bilibili.com",
+		Title:   title,
+		Type:    "video",
+		Streams: streams,
+		URL:     options.url,
+	}
+}
+
+func biliplusDownload(options bilibiliOptions) downloader.Data {
+	access_key := config.BilibiliAccessKey
+	base_url := "https://biliplus.ipcjs.top/BPplayurl.php?access_key=%v&cid=%v&module=pgc&qn=112"
+	finalUrl := fmt.Sprintf(base_url, access_key, options.cid)
+	responseBody, err := request.Get(finalUrl, "", nil)
+	if err != nil {
+		return downloader.EmptyData(options.url, err)
+	}
+
+	type Video struct {
+		XMLName xml.Name `xml:"video"`
+		DUrl struct {
+			XMLName xml.Name `xml:"durl"`
+			Size int64 `xml:"size"`
+			Url string `xml:"url"`
+		}
+	}
+
+	var parsedVideo Video
+	data := []byte(responseBody)
+
+	if err := xml.Unmarshal(data, &parsedVideo); err != nil {
+		fmt.Println(err)
+		return downloader.EmptyData(options.url, err)
+	}
+
+	originalUrl := parsedVideo.DUrl.Url
+	endOfBase := strings.Index(originalUrl, ".bilivideo.com");
+	replacedUrl := strings.ReplaceAll(originalUrl, originalUrl[:endOfBase],"https://upos-sz-mirrorcos")
+
+	html, err := request.Get(options.url, referer, nil)
+	if err != nil {
+		return downloader.EmptyData(options.url, err)
+	}
+
+	// get the title
+	doc, err := parser.GetDoc(html)
+	if err != nil {
+		return downloader.EmptyData(options.url, err)
+	}
+	title := parser.Title(doc)
+
+
+	urlData := downloader.URL{
+		URL:  replacedUrl,
+		Size: parsedVideo.DUrl.Size,
+		Ext:  "mp4",
+	}
+
+	streams := map[string]downloader.Stream{
+		"112": {
+			URLs: []downloader.URL{urlData},
+			Size: parsedVideo.DUrl.Size,
+		},
 	}
 
 	return downloader.Data{

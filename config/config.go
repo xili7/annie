@@ -53,6 +53,8 @@ var (
 	YoukuPassword string
 	// RetryTimes how many times to retry when the download failed
 	RetryTimes int
+	// If present, get Bilibili video download link using biliplus API
+	BilibiliAccessKey string
 
 	MultiThread bool
 )

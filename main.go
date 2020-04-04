@@ -39,12 +39,11 @@ import (
 	"github.com/iawia002/annie/extractors/xvideos"
 	"github.com/iawia002/annie/extractors/yinyuetai"
 	"github.com/iawia002/annie/extractors/youku"
-	"github.com/iawia002/annie/extractors/youtube"
 	"github.com/iawia002/annie/utils"
 )
 
 func init() {
-	flag.BoolVar(&config.MultiThread, "m", false, "Multiple threads to download single video")
+	flag.BoolVar(&config.MultiThread, "m", true, "Multiple threads to download single video")
 	flag.BoolVar(&config.Debug, "d", false, "Debug mode")
 	flag.BoolVar(&config.Version, "v", false, "Show version")
 	flag.BoolVar(&config.InfoOnly, "i", false, "Information only")
@@ -57,11 +56,12 @@ func init() {
 	flag.BoolVar(&config.ExtractedData, "j", false, "Print extracted data")
 	flag.IntVar(&config.ChunkSizeMB, "cs", 0, "HTTP chunk size for downloading (in MB)")
 	flag.BoolVar(&config.UseAria2RPC, "aria2", false, "Use Aria2 RPC to download")
+	flag.StringVar(&config.BilibiliAccessKey, "biliplus", "", "Use biliplus to download")
 	flag.StringVar(&config.Aria2Token, "aria2token", "", "Aria2 RPC Token")
 	flag.StringVar(&config.Aria2Addr, "aria2addr", "localhost:6800", "Aria2 Address")
 	flag.StringVar(&config.Aria2Method, "aria2method", "http", "Aria2 Method")
 	flag.IntVar(
-		&config.ThreadNumber, "n", 10, "The number of download thread (only works for multiple-parts video)",
+		&config.ThreadNumber, "n", 16, "The number of download thread (only works for multiple-parts video)",
 	)
 	flag.StringVar(&config.File, "F", "", "URLs file path")
 	flag.IntVar(&config.ItemStart, "start", 1, "Define the starting item of a playlist or a file input")
@@ -118,8 +118,6 @@ func download(videoURL string) error {
 		data, err = pixivision.Extract(videoURL)
 	case "youku":
 		data, err = youku.Extract(videoURL)
-	case "youtube", "youtu": // youtu.be
-		data, err = youtube.Extract(videoURL)
 	case "iqiyi":
 		data, err = iqiyi.Extract(videoURL)
 	case "mgtv":
